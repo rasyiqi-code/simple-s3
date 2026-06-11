@@ -23,9 +23,9 @@ yarn-error.log*
 logs/
 *.log
 
-# Build files
-dist/
-build/
+# Build files (dikecualikan dari ignore agar tersedia di server deployment)
+# dist/
+# build/
 
 # Test files
 test.png
