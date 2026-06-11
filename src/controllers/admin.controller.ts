@@ -152,7 +152,8 @@ export async function listFiles(req: Request, res: Response, next: NextFunction)
     const files = db.query('SELECT * FROM files ORDER BY uploaded_at DESC').all();
     res.status(200).json({
       success: true,
-      data: files
+      data: files,
+      maxStorageGb: config.maxStorageGb
     });
   } catch (error) {
     next(error);

@@ -279,7 +279,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (response.success) {
         filesData = response.data;
         renderFiles(filesData);
-        calculateDiskUsage(filesData);
+        calculateDiskUsage(filesData, response.maxStorageGb || 200);
       }
     } catch {
       filesList.innerHTML = `
@@ -378,14 +378,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
   refreshFilesBtn.addEventListener('click', loadFiles);
 
-  function calculateDiskUsage(files) {
+  function calculateDiskUsage(files, maxStorageGb = 200) {
     const totalBytesUsed = files.reduce((acc, f) => acc + f.size, 0);
-    const totalGB = 200;
-    const bytesInGB = totalGB * 1024 * 1024 * 1024;
+    const bytesInGB = maxStorageGb * 1024 * 1024 * 1024;
     const percentageUsed = (totalBytesUsed / bytesInGB) * 100;
 
     storageStatValue.innerHTML = `
-      ${formatBytes(totalBytesUsed)} / 200 GB
+      ${formatBytes(totalBytesUsed)} / ${maxStorageGb} GB
       <span style="font-size:0.75rem;display:block;color:var(--text-muted);font-weight:normal;margin-top:4px">
         Terpakai ~${percentageUsed.toFixed(4)}%
       </span>
