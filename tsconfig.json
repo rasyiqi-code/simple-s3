@@ -10,7 +10,8 @@
     "outDir": "./dist",
     "rootDir": "./",
     "resolveJsonModule": true,
-    "allowSyntheticDefaultImports": true
+    "allowSyntheticDefaultImports": true,
+    "types": ["bun"]
   },
   "include": ["src/**/*", "tests/**/*"]
 }
