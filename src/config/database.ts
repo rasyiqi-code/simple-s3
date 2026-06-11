@@ -8,8 +8,11 @@ if (!fs.existsSync(dataDir)) {
   fs.mkdirSync(dataDir, { recursive: true });
 }
 
-// Inisialisasi database SQLite lokal
-const dbPath = path.join(dataDir, 'storage.db');
+// Deteksi environment untuk menentukan nama database
+// Menggunakan storage_test.db saat testing agar tidak merusak data development
+const isTestEnv = process.env.NODE_ENV === 'test' || globalThis.process?.env?.NODE_ENV === 'test';
+const dbName = isTestEnv ? 'storage_test.db' : 'storage.db';
+const dbPath = path.join(dataDir, dbName);
 export const db = new Database(dbPath);
 
 console.log(`[DATABASE] Berhasil terhubung ke SQLite: ${dbPath}`);
