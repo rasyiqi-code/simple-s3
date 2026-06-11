@@ -65,20 +65,27 @@ export async function uploadSingleFile(
 
     // Jika file adalah gambar, lakukan optimasi dan konversi ke .webp
     if (isImageFile(ext)) {
-      const optimizationResult = await optimizeImageToWebP(
-        tempFilePath,
-        uploadDir,
-        finalFileName
-      );
+      try {
+        const optimizationResult = await optimizeImageToWebP(
+          tempFilePath,
+          uploadDir,
+          finalFileName
+        );
 
-      finalPath = optimizationResult.outputPath;
-      finalFileName = optimizationResult.filename;
-      finalSize = optimizationResult.size;
-      finalMimeType = 'image/webp';
+        finalPath = optimizationResult.outputPath;
+        finalFileName = optimizationResult.filename;
+        finalSize = optimizationResult.size;
+        finalMimeType = 'image/webp';
 
-      await fs.unlink(tempFilePath).catch((err) => {
-        console.error(`Gagal menghapus file temporary: ${tempFilePath}`, err);
-      });
+        await fs.unlink(tempFilePath).catch((err) => {
+          console.error(`Gagal menghapus file temporary: ${tempFilePath}`, err);
+        });
+      } catch (optError) {
+        console.error('[OPTIMIZATION WARNING] Gagal mengoptimalkan gambar dengan sharp, menggunakan file asli:', optError);
+        // Fallback: Pindahkan file temporary asli ke path target tanpa optimasi
+        finalPath = path.join(uploadDir, finalFileName);
+        await fs.rename(tempFilePath, finalPath);
+      }
     } else {
       await fs.rename(tempFilePath, finalPath);
     }
@@ -161,18 +168,24 @@ export async function uploadMultipleFiles(
         let finalMimeType = file.mimetype;
 
         if (isImageFile(ext)) {
-          const optimizationResult = await optimizeImageToWebP(
-            tempFilePath,
-            uploadDir,
-            finalFileName
-          );
+          try {
+            const optimizationResult = await optimizeImageToWebP(
+              tempFilePath,
+              uploadDir,
+              finalFileName
+            );
 
-          finalPath = optimizationResult.outputPath;
-          finalFileName = optimizationResult.filename;
-          finalSize = optimizationResult.size;
-          finalMimeType = 'image/webp';
+            finalPath = optimizationResult.outputPath;
+            finalFileName = optimizationResult.filename;
+            finalSize = optimizationResult.size;
+            finalMimeType = 'image/webp';
 
-          await fs.unlink(tempFilePath).catch(() => {});
+            await fs.unlink(tempFilePath).catch(() => {});
+          } catch (optError) {
+            console.error('[OPTIMIZATION WARNING] Gagal mengoptimalkan gambar dengan sharp, menggunakan file asli:', optError);
+            finalPath = path.join(uploadDir, finalFileName);
+            await fs.rename(tempFilePath, finalPath);
+          }
         } else {
           await fs.rename(tempFilePath, finalPath);
         }
