@@ -279,7 +279,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (response.success) {
         filesData = response.data;
         renderFiles(filesData);
-        calculateDiskUsage(filesData, response.maxStorageGb || 200);
+        calculateDiskUsage(response.totalUsedBytes || 0, response.totalStorageBytes || 0);
       }
     } catch {
       filesList.innerHTML = `
@@ -378,13 +378,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   refreshFilesBtn.addEventListener('click', loadFiles);
 
-  function calculateDiskUsage(files, maxStorageGb = 200) {
-    const totalBytesUsed = files.reduce((acc, f) => acc + f.size, 0);
-    const bytesInGB = maxStorageGb * 1024 * 1024 * 1024;
-    const percentageUsed = (totalBytesUsed / bytesInGB) * 100;
+  function calculateDiskUsage(totalUsedBytes, totalStorageBytes) {
+    const percentageUsed = totalStorageBytes > 0 ? (totalUsedBytes / totalStorageBytes) * 100 : 0;
 
     storageStatValue.innerHTML = `
-      ${formatBytes(totalBytesUsed)} / ${maxStorageGb} GB
+      ${formatBytes(totalUsedBytes)} / ${formatBytes(totalStorageBytes)}
       <span style="font-size:0.75rem;display:block;color:var(--text-muted);font-weight:normal;margin-top:4px">
         Terpakai ~${percentageUsed.toFixed(4)}%
       </span>

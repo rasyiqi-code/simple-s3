@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import path from 'path';
+import fs from 'fs';
 /**
  * Membuat nama file unik menggunakan kombinasi hash SHA256 dari nama asli + timestamp
  * Format: [sha256-hash]-[timestamp].[ext]
@@ -55,4 +56,21 @@ export function isSafeFileName(filename) {
  */
 export function isSafeBucketName(name) {
     return /^[a-z0-9_-]{1,63}$/.test(name);
+}
+/**
+ * Mendapatkan sisa kapasitas kosong disk (free/available space) dalam byte pada direktori upload
+ *
+ * @param targetDir Direktori target yang akan dicek kapasitasnya
+ * @returns Kapasitas kosong disk dalam byte
+ */
+export function getAvailableDiskSpace(targetDir) {
+    try {
+        const stats = fs.statfsSync(targetDir);
+        return stats.bavail * stats.bsize; // dalam byte
+    }
+    catch (error) {
+        console.error('[DISK SPACE ERROR] Gagal mendeteksi sisa ruang disk:', error);
+        // Fallback ke 50 GB jika terjadi error pembacaan
+        return 50 * 1024 * 1024 * 1024;
+    }
 }

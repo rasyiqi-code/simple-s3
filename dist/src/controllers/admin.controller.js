@@ -3,7 +3,7 @@ import path from 'path';
 import crypto from 'crypto';
 import { db } from '../config/database.js';
 import { config } from '../config/index.js';
-import { isSafeFileName } from '../utils/file.utils.js';
+import { isSafeFileName, getAvailableDiskSpace } from '../utils/file.utils.js';
 /**
  * Memverifikasi login dasbor admin menggunakan Master API Key
  * POST /api/admin/login
@@ -131,9 +131,18 @@ export async function deleteKey(req, res, next) {
 export async function listFiles(req, res, next) {
     try {
         const files = db.query('SELECT * FROM files ORDER BY uploaded_at DESC').all();
+        // Hitung total size file yang terdaftar di database
+        const totalUsedBytes = files.reduce((acc, f) => acc + f.size, 0);
+        // Dapatkan kapasitas kosong disk (free space) sesungguhnya
+        const freeSpaceBytes = getAvailableDiskSpace(config.getAbsoluteUploadDir());
+        // Total kapasitas teoretis = kapasitas kosong + file terpakai oleh simple s3
+        const totalStorageBytes = freeSpaceBytes + totalUsedBytes;
         res.status(200).json({
             success: true,
-            data: files
+            data: files,
+            totalUsedBytes,
+            freeSpaceBytes,
+            totalStorageBytes
         });
     }
     catch (error) {
