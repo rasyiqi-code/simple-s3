@@ -1,4 +1,4 @@
-import { Database } from 'bun:sqlite';
+import { DatabaseSync } from 'node:sqlite';
 import fs from 'fs';
 import path from 'path';
 
@@ -13,7 +13,31 @@ if (!fs.existsSync(dataDir)) {
 const isTestEnv = process.env.NODE_ENV === 'test' || globalThis.process?.env?.NODE_ENV === 'test';
 const dbName = isTestEnv ? 'storage_test.db' : 'storage.db';
 const dbPath = path.join(dataDir, dbName);
-export const db = new Database(dbPath);
+
+// Inisialisasi koneksi node:sqlite bawaan Node.js
+const rawDb = new DatabaseSync(dbPath);
+
+// Wrapper objek db agar kompatibel dengan API bun:sqlite yang digunakan di controller/middleware
+export const db = {
+  run(sql: string, params: any[] = []): any {
+    const stmt = rawDb.prepare(sql);
+    return stmt.run(...params);
+  },
+  prepare(sql: string): any {
+    return rawDb.prepare(sql);
+  },
+  query(sql: string): any {
+    const stmt = rawDb.prepare(sql);
+    return {
+      get(...params: any[]) {
+        return stmt.get(...params);
+      },
+      all(...params: any[]) {
+        return stmt.all(...params);
+      }
+    };
+  }
+};
 
 console.log(`[DATABASE] Berhasil terhubung ke SQLite: ${dbPath}`);
 

@@ -1,4 +1,4 @@
-import { describe, expect, it, beforeAll, afterAll } from 'bun:test';
+import { describe, expect, it, beforeAll, afterAll } from 'vitest';
 import fs from 'fs/promises';
 import existsSync from 'fs';
 import path from 'path';
