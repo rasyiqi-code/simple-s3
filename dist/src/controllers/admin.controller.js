@@ -3,7 +3,7 @@ import path from 'path';
 import crypto from 'crypto';
 import { db } from '../config/database.js';
 import { config } from '../config/index.js';
-import { isSafeFileName, getAvailableDiskSpace } from '../utils/file.utils.js';
+import { isSafeFileName, getDiskSpaceInfo } from '../utils/file.utils.js';
 /**
  * Memverifikasi login dasbor admin menggunakan Master API Key
  * POST /api/admin/login
@@ -131,17 +131,21 @@ export async function deleteKey(req, res, next) {
 export async function listFiles(req, res, next) {
     try {
         const files = db.query('SELECT * FROM files ORDER BY uploaded_at DESC').all();
-        // Hitung total size file yang terdaftar di database
+        // 1. Hitung total ukuran berkas yang terdaftar di database Simple S3 (dalam byte)
         const totalUsedBytes = files.reduce((acc, f) => acc + f.size, 0);
-        // Dapatkan kapasitas kosong disk (free space) sesungguhnya
-        const freeSpaceBytes = getAvailableDiskSpace(config.getAbsoluteUploadDir());
-        // Total kapasitas teoretis = kapasitas kosong + file terpakai oleh simple s3
-        const totalStorageBytes = freeSpaceBytes + totalUsedBytes;
+        // 2. Dapatkan informasi kapasitas disk fisik (total space dan free space) dari sistem operasi
+        const diskInfo = getDiskSpaceInfo(config.getAbsoluteUploadDir());
+        // 3. Hitung kapasitas yang digunakan oleh OS, instalasi Simple S3, dan project lain di luar file upload Simple S3
+        // Rumus: Terpakai Lain = Total Disk - Free Space - Terpakai Simple S3
+        const usedOtherDiskBytes = Math.max(0, diskInfo.total - diskInfo.free - totalUsedBytes);
+        // 4. Hitung kapasitas penyimpanan total teoretis yang dialokasikan untuk Simple S3
+        // Rumus: Total untuk Simple S3 = Total Disk - Terpakai Lain
+        const totalStorageBytes = Math.max(0, diskInfo.total - usedOtherDiskBytes);
         res.status(200).json({
             success: true,
             data: files,
             totalUsedBytes,
-            freeSpaceBytes,
+            freeSpaceBytes: diskInfo.free,
             totalStorageBytes
         });
     }

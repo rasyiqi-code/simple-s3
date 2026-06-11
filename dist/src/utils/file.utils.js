@@ -58,19 +58,24 @@ export function isSafeBucketName(name) {
     return /^[a-z0-9_-]{1,63}$/.test(name);
 }
 /**
- * Mendapatkan sisa kapasitas kosong disk (free/available space) dalam byte pada direktori upload
+ * Mendapatkan informasi kapasitas disk (total dan free space) dalam byte pada direktori target
  *
  * @param targetDir Direktori target yang akan dicek kapasitasnya
- * @returns Kapasitas kosong disk dalam byte
+ * @returns Objek berisi total dan free space dalam byte
  */
-export function getAvailableDiskSpace(targetDir) {
+export function getDiskSpaceInfo(targetDir) {
     try {
         const stats = fs.statfsSync(targetDir);
-        return stats.bavail * stats.bsize; // dalam byte
+        const free = stats.bavail * stats.bsize;
+        const total = stats.blocks * stats.bsize;
+        return { free, total };
     }
     catch (error) {
-        console.error('[DISK SPACE ERROR] Gagal mendeteksi sisa ruang disk:', error);
-        // Fallback ke 50 GB jika terjadi error pembacaan
-        return 50 * 1024 * 1024 * 1024;
+        console.error('[DISK SPACE ERROR] Gagal mendeteksi kapasitas disk:', error);
+        // Fallback ke 50 GB free, 100 GB total jika terjadi error pembacaan
+        return {
+            free: 50 * 1024 * 1024 * 1024,
+            total: 100 * 1024 * 1024 * 1024
+        };
     }
 }
