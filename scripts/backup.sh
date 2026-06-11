@@ -6,7 +6,9 @@
 # ==============================================================================
 
 # 1. KONFIGURASI PATH
-APP_DIR="/media/rasyiqi/PROJECT/simple-s3" # Ganti dengan path absolut instalasi di VPS jika berbeda
+# Mendapatkan path absolut root proyek secara dinamis berdasarkan lokasi script
+SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &> /dev/null && pwd)
+APP_DIR=$(dirname "$SCRIPT_DIR")
 RETENTION_DAYS=30                          # Jumlah hari cadangan disimpan sebelum dihapus
 
 # Membaca variabel environment dari file .env jika ada
