@@ -4,17 +4,14 @@ import path from 'path';
 import crypto from 'crypto';
 import { config } from './index.js';
 
-// Buat direktori data jika belum ada di root proyek
-const dataDir = path.join(process.cwd(), 'data');
+// Buat direktori data jika belum ada
+const dataDir = config.getAbsoluteDatabaseDir();
 if (!fs.existsSync(dataDir)) {
   fs.mkdirSync(dataDir, { recursive: true });
 }
 
-// Deteksi environment untuk menentukan nama database
-// Menggunakan storage_test.db saat testing agar tidak merusak data development
-const isTestEnv = process.env.NODE_ENV === 'test' || globalThis.process?.env?.NODE_ENV === 'test';
-const dbName = isTestEnv ? 'storage_test.db' : 'storage.db';
-const dbPath = path.join(dataDir, dbName);
+// Dapatkan path berkas database SQLite (.db) dari konfigurasi
+const dbPath = config.getDatabasePath();
 
 // Inisialisasi koneksi node:sqlite bawaan Node.js
 const rawDb = new DatabaseSync(dbPath);

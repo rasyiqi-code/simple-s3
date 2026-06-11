@@ -55,6 +55,7 @@ export const config = {
   port: parseInt(process.env.PORT || '3000', 10),
   nodeEnv: process.env.NODE_ENV || 'development',
   apiKey: process.env.API_KEY || fallbackApiKey,
+  databaseDir: process.env.DATABASE_DIR || 'data',
   uploadDir: process.env.UPLOAD_DIR || defaultUploadDir,
   maxFileSize: parseInt(process.env.MAX_FILE_SIZE || '52428800', 10), // Default 50MB
   allowedExtensions: (process.env.ALLOWED_EXTENSIONS || 'jpg,jpeg,png,gif,webp,pdf,mp4,zip,docx,xlsx')
@@ -66,6 +67,20 @@ export const config = {
     return path.isAbsolute(this.uploadDir)
       ? this.uploadDir
       : path.join(process.cwd(), this.uploadDir);
+  },
+
+  // Mendapatkan path absolut direktori database
+  getAbsoluteDatabaseDir(): string {
+    return path.isAbsolute(this.databaseDir)
+      ? this.databaseDir
+      : path.join(process.cwd(), this.databaseDir);
+  },
+
+  // Mendapatkan path absolut berkas database SQLite (.db)
+  getDatabasePath(): string {
+    const isTestEnv = process.env.NODE_ENV === 'test' || globalThis.process?.env?.NODE_ENV === 'test';
+    const dbName = isTestEnv ? 'storage_test.db' : 'storage.db';
+    return path.join(this.getAbsoluteDatabaseDir(), dbName);
   },
 
   // Mendapatkan path absolut untuk direktori temporary upload

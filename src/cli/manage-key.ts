@@ -2,9 +2,10 @@ import { DatabaseSync } from 'node:sqlite';
 import path from 'path';
 import fs from 'fs';
 import crypto from 'crypto';
+import { config } from '../config/index.js';
 
-// Path database development
-const dbPath = path.join(process.cwd(), 'data', 'storage.db');
+// Dapatkan path berkas database SQLite (.db) dari konfigurasi
+const dbPath = config.getDatabasePath();
 
 if (!fs.existsSync(dbPath)) {
   console.error(`[ERROR] Database tidak ditemukan di: ${dbPath}`);
