@@ -1,6 +1,7 @@
 import { DatabaseSync } from 'node:sqlite';
 import fs from 'fs';
 import path from 'path';
+import crypto from 'crypto';
 import { config } from './index.js';
 
 // Buat direktori data jika belum ada di root proyek
@@ -129,13 +130,13 @@ export function runMigrations(): void {
     // 7. Masukkan default API key jika tabel api_keys kosong untuk memudahkan transisi
     const countResult = db.query('SELECT COUNT(*) as count FROM api_keys').get() as { count: number };
     if (countResult && countResult.count === 0) {
-      // Masukkan API Key default dari env variable atau generator
-      const defaultKey = process.env.API_KEY || 'local-dev-api-key';
+      // Masukkan API Key default dari env variable atau generator acak yang aman
+      const defaultKey = process.env.API_KEY || `sk_client_${crypto.randomBytes(16).toString('hex')}`;
       db.run(
         "INSERT INTO api_keys (key_value, name, status, bucket_name, created_at) VALUES (?, ?, ?, 'default', ?)",
-        [defaultKey, 'Default System Key (Dari Env)', 'active', Date.now()]
+        [defaultKey, 'Default System Key (Dibuat Otomatis)', 'active', Date.now()]
       );
-      console.log('[DATABASE] API Key default berhasil ditambahkan ke database (terikat ke bucket default).');
+      console.log(`[DATABASE] API Key default berhasil ditambahkan ke database: ${defaultKey} (terikat ke bucket default).`);
     }
 
     console.log('[DATABASE] Migrasi tabel berhasil diperiksa/dijalankan.');

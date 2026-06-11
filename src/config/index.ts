@@ -1,8 +1,12 @@
 import dotenv from 'dotenv';
 import path from 'path';
+import crypto from 'crypto';
 
 // Memuat environment variables dari berkas .env
 dotenv.config();
+
+// Buat API Key fallback acak yang aman jika tidak diset di .env
+const fallbackApiKey = `sk_master_${crypto.randomBytes(16).toString('hex')}`;
 
 // Konfigurasi direktori penyimpanan default
 const defaultUploadDir = 'uploads';
@@ -10,7 +14,7 @@ const defaultUploadDir = 'uploads';
 export const config = {
   port: parseInt(process.env.PORT || '3000', 10),
   nodeEnv: process.env.NODE_ENV || 'development',
-  apiKey: process.env.API_KEY || 'local-dev-api-key',
+  apiKey: process.env.API_KEY || fallbackApiKey,
   uploadDir: process.env.UPLOAD_DIR || defaultUploadDir,
   maxFileSize: parseInt(process.env.MAX_FILE_SIZE || '52428800', 10), // Default 50MB
   maxStorageGb: parseInt(process.env.MAX_STORAGE_GB || '200', 10),
