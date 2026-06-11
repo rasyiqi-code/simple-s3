@@ -663,7 +663,7 @@ tbody tr:hover {
   background-color: var(--bg-secondary);
   color: var(--text-main);
 }
-.input-wrapper::after {
+.input-wrapper:has(select)::after {
   content: '\f078';
   font-family: 'Font Awesome 6 Free';
   font-weight: 900;
