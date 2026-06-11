@@ -146,14 +146,9 @@ export async function listFiles(req, res, next) {
         else {
             usedOtherDiskBytes = Math.max(0, diskInfo.total - diskInfo.free - totalUsedBytes);
         }
-        // 5. Tentukan batas kuota penyimpanan (Gunakan MAX_STORAGE_GB dari env jika diset, jika tidak, gunakan kapasitas total disk fisik sesungguhnya)
-        let limitBytes = diskInfo.total;
-        if (config.maxStorageGb && config.maxStorageGb > 0) {
-            limitBytes = config.maxStorageGb * 1024 * 1024 * 1024;
-        }
-        // 6. Hitung kapasitas penyimpanan total teoretis yang dialokasikan untuk Simple S3
-        // Rumus: Total untuk Simple S3 = Kuota Akun (atau Disk Total) - Terpakai Lainnya
-        const totalStorageBytes = Math.max(0, limitBytes - usedOtherDiskBytes);
+        // 5. Hitung kapasitas penyimpanan total teoretis yang dialokasikan untuk Simple S3
+        // Rumus: Total untuk Simple S3 = Kapasitas Total Disk - Terpakai Lainnya
+        const totalStorageBytes = Math.max(0, diskInfo.total - usedOtherDiskBytes);
         res.status(200).json({
             success: true,
             data: files,
