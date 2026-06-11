@@ -26,3 +26,6 @@ logs/
 # Build files
 dist/
 build/
+
+# Test files
+test.png
