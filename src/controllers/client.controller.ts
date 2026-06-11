@@ -38,7 +38,8 @@ export async function deleteFileByClient(
     }
 
     // 3. Hapus file secara fisik dari disk
-    const absolutePath = path.join(config.getAbsoluteUploadDir(), filename);
+    const bucketName = fileRecord.bucket_name || 'default';
+    const absolutePath = path.join(config.getAbsoluteUploadDir(), bucketName, filename);
     await fs.unlink(absolutePath).catch((err) => {
       console.warn(`[WARNING] Gagal menghapus file fisik di ${absolutePath}:`, err.message);
     });

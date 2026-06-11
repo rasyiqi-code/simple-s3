@@ -58,4 +58,53 @@ router.get('/:bucket/:filename', (req, res) => {
         }
     });
 });
+/**
+ * Route GET /file/:filename (Fallback & Backward Compatibility)
+ * Menyajikan berkas statis dari bucket default atau root uploads untuk URL lama yang tidak memiliki segment bucket.
+ */
+router.get('/:filename', (req, res) => {
+    const { filename } = req.params;
+    // 1. Validasi keamanan nama berkas
+    if (!isSafeFileName(filename)) {
+        res.status(400).json({
+            success: false,
+            error: 'Nama berkas tidak valid atau tidak aman'
+        });
+        return;
+    }
+    const absoluteUploadDir = config.getAbsoluteUploadDir();
+    // Cari pertama di folder 'default'
+    let filePath = path.join(absoluteUploadDir, 'default', filename);
+    // Jika tidak ada di folder 'default', cari di root upload directory (lokasi file lama)
+    if (!fs.existsSync(filePath)) {
+        filePath = path.join(absoluteUploadDir, filename);
+    }
+    // 2. Pastikan path yang diakses masih berada di dalam direktori upload
+    if (!filePath.startsWith(absoluteUploadDir)) {
+        res.status(400).json({
+            success: false,
+            error: 'Akses path tidak diizinkan'
+        });
+        return;
+    }
+    // 3. Periksa apakah berkas ada
+    if (!fs.existsSync(filePath)) {
+        res.status(404).json({
+            success: false,
+            error: 'Berkas tidak ditemukan'
+        });
+        return;
+    }
+    // 4. Tambahkan HTTP Header Cache-Control
+    res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    // 5. Kirim berkas ke client
+    res.sendFile(filePath, (err) => {
+        if (err && !res.headersSent) {
+            res.status(500).json({
+                success: false,
+                error: 'Gagal mengirim berkas ke klien'
+            });
+        }
+    });
+});
 export default router;

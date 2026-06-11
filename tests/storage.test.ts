@@ -25,11 +25,18 @@ beforeAll(async () => {
   // Bersihkan tabel database uji agar terisolasi dan bersih
   db.run('DELETE FROM api_keys');
   db.run('DELETE FROM files');
+  db.run('DELETE FROM buckets');
 
-  // Masukkan API key uji ke database agar middleware auth mengenalinya
+  // Buat bucket default untuk pengujian
   db.run(
-    'INSERT INTO api_keys (key_value, name, status, created_at) VALUES (?, ?, ?, ?)',
-    [TEST_API_KEY, 'API Key Uji Coba', 'active', Date.now()]
+    "INSERT INTO buckets (name, description, created_at) VALUES ('default', 'Default storage bucket', ?)",
+    [Date.now()]
+  );
+
+  // Masukkan API key uji ke database agar middleware auth mengenalinya (terikat ke bucket default)
+  db.run(
+    'INSERT INTO api_keys (key_value, name, status, bucket_name, created_at) VALUES (?, ?, ?, ?, ?)',
+    [TEST_API_KEY, 'API Key Uji Coba', 'active', 'default', Date.now()]
   );
   
   // Pastikan folder bersih sebelum tes berjalan
@@ -137,7 +144,7 @@ describe('Internal Storage API Service Tests', () => {
 
     // Periksa apakah file fisik benar-benar tersimpan di folder upload
     const savedFileName = body.data.filename;
-    const physicalPath = path.join(config.getAbsoluteUploadDir(), savedFileName);
+    const physicalPath = path.join(config.getAbsoluteUploadDir(), 'default', savedFileName);
     expect(existsSync.existsSync(physicalPath)).toBe(true);
 
     // Cek isi file apakah sesuai
@@ -176,7 +183,7 @@ describe('Internal Storage API Service Tests', () => {
 
     // Periksa apakah file fisik .webp hasil kompresi tersimpan
     const savedFileName = body.data.filename;
-    const physicalPath = path.join(config.getAbsoluteUploadDir(), savedFileName);
+    const physicalPath = path.join(config.getAbsoluteUploadDir(), 'default', savedFileName);
     expect(existsSync.existsSync(physicalPath)).toBe(true);
 
     // Pastikan file temporary asli di folder temp sudah dibersihkan
@@ -266,7 +273,7 @@ describe('Internal Storage API Service Tests', () => {
           'Content-Type': 'application/json',
           'x-admin-key': TEST_API_KEY
         },
-        body: JSON.stringify({ name: 'Key Test Integrasi' })
+        body: JSON.stringify({ name: 'Key Test Integrasi', bucket_name: 'default' })
       });
       expect(createResponse.status).toBe(201);
       const createBody: any = await createResponse.json();
@@ -350,8 +357,8 @@ describe('Internal Storage API Service Tests', () => {
       expect(file2.filename).toContain('.webp');
 
       // Bersihkan file test fisik
-      await fs.unlink(path.join(config.getAbsoluteUploadDir(), file1.filename)).catch(() => {});
-      await fs.unlink(path.join(config.getAbsoluteUploadDir(), file2.filename)).catch(() => {});
+      await fs.unlink(path.join(config.getAbsoluteUploadDir(), 'default', file1.filename)).catch(() => {});
+      await fs.unlink(path.join(config.getAbsoluteUploadDir(), 'default', file2.filename)).catch(() => {});
     });
 
     it('harus mampu menghapus berkas oleh klien menggunakan API Key klien yang valid', async () => {
@@ -377,7 +384,7 @@ describe('Internal Storage API Service Tests', () => {
       expect(deleteBody.success).toBe(true);
 
       // Cek apakah file fisik terhapus
-      const filePath = path.join(config.getAbsoluteUploadDir(), generatedFilename);
+      const filePath = path.join(config.getAbsoluteUploadDir(), 'default', generatedFilename);
       expect(existsSync.existsSync(filePath)).toBe(false);
     });
 
