@@ -11,6 +11,8 @@ import {
 import { adminAuthMiddleware } from '../middlewares/adminAuth.js';
 import bucketRouter from './bucket.routes.js';
 
+import { config } from '../config/index.js';
+
 const router = Router();
 
 // Rute login admin tidak dilindungi oleh middleware adminAuth
@@ -18,6 +20,28 @@ router.post('/login', verifyLogin);
 
 // Lindungi seluruh rute administratif di bawah ini dengan Master Key validator
 router.use(adminAuthMiddleware);
+
+// Rute debug konfigurasi aktif (untuk mendiagnosis path database/uploads)
+router.get('/debug-config', (req, res) => {
+  res.status(200).json({
+    success: true,
+    cwd: process.cwd(),
+    nodeEnv: process.env.NODE_ENV,
+    config: {
+      databaseDir: config.databaseDir,
+      uploadDir: config.uploadDir,
+      absoluteDatabaseDir: config.getAbsoluteDatabaseDir(),
+      absoluteUploadDir: config.getAbsoluteUploadDir(),
+      databasePath: config.getDatabasePath()
+    },
+    envKeysPresent: {
+      DATABASE_DIR: !!process.env.DATABASE_DIR,
+      UPLOAD_DIR: !!process.env.UPLOAD_DIR,
+      BACKUP_DIR: !!process.env.BACKUP_DIR,
+      API_KEY: !!process.env.API_KEY
+    }
+  });
+});
 
 // Endpoint manajemen Bucket
 router.use('/buckets', bucketRouter);
