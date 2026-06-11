@@ -47,6 +47,7 @@ export function runMigrations() {
         key_value TEXT UNIQUE NOT NULL,
         name TEXT NOT NULL,
         status TEXT DEFAULT 'active',
+        bucket_name TEXT,
         created_at INTEGER NOT NULL
       )
     `);
@@ -58,6 +59,7 @@ export function runMigrations() {
         filename TEXT UNIQUE NOT NULL,
         mime_type TEXT NOT NULL,
         size INTEGER NOT NULL,
+        bucket_name TEXT DEFAULT 'default',
         uploaded_at INTEGER NOT NULL
       )
     `);
@@ -71,7 +73,32 @@ export function runMigrations() {
         timestamp INTEGER NOT NULL
       )
     `);
-        // 4. Masukkan default API key jika tabel api_keys kosong untuk memudahkan transisi
+        // 4. Tabel buckets: Menyimpan daftar bucket penyimpanan
+        db.run(`
+      CREATE TABLE IF NOT EXISTS buckets (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT UNIQUE NOT NULL,
+        description TEXT DEFAULT '',
+        created_at INTEGER NOT NULL
+      )
+    `);
+        // 5. Migrasi kolom baru untuk tabel yang sudah ada (backward-compatible)
+        // SQLite tidak support IF NOT EXISTS pada ALTER TABLE, gunakan try/catch per kolom
+        try {
+            db.run('ALTER TABLE api_keys ADD COLUMN bucket_name TEXT');
+            console.log('[DATABASE] Kolom bucket_name berhasil ditambahkan ke api_keys.');
+        }
+        catch {
+            // Kolom sudah ada, lewati
+        }
+        try {
+            db.run("ALTER TABLE files ADD COLUMN bucket_name TEXT DEFAULT 'default'");
+            console.log('[DATABASE] Kolom bucket_name berhasil ditambahkan ke files.');
+        }
+        catch {
+            // Kolom sudah ada, lewati
+        }
+        // 6. Masukkan default API key jika tabel api_keys kosong untuk memudahkan transisi
         const countResult = db.query('SELECT COUNT(*) as count FROM api_keys').get();
         if (countResult && countResult.count === 0) {
             // Masukkan API Key default dari env variable atau generator

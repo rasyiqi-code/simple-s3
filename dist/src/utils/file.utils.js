@@ -46,3 +46,13 @@ export function isSafeFileName(filename) {
     }
     return true;
 }
+/**
+ * Validasi nama bucket: hanya boleh huruf kecil, angka, tanda hubung, dan underscore
+ * Minimal 1 karakter, maksimal 63 karakter (mengikuti konvensi S3)
+ *
+ * @param name Nama bucket yang akan divalidasi
+ * @returns true jika valid, false jika tidak
+ */
+export function isSafeBucketName(name) {
+    return /^[a-z0-9_-]{1,63}$/.test(name);
+}

@@ -2,16 +2,24 @@ import { Router } from 'express';
 import path from 'path';
 import fs from 'fs';
 import { config } from '../config/index.js';
-import { isSafeFileName } from '../utils/file.utils.js';
+import { isSafeFileName, isSafeBucketName } from '../utils/file.utils.js';
 const router = Router();
 /**
- * Route GET /file/:filename
- * Menyajikan berkas statis secara publik untuk klien.
- * Dilengkapi dengan pencegahan Directory Traversal dan pengaturan Cache-Control yang optimal.
+ * Route GET /file/:bucket/:filename
+ * Menyajikan berkas statis dari bucket tertentu secara publik.
+ * Dilengkapi pencegahan Directory Traversal dan Cache-Control optimal.
  */
-router.get('/:filename', (req, res) => {
-    const { filename } = req.params;
-    // 1. Validasi keamanan nama berkas (mencegah path traversal)
+router.get('/:bucket/:filename', (req, res) => {
+    const { bucket, filename } = req.params;
+    // 1. Validasi nama bucket
+    if (!isSafeBucketName(bucket)) {
+        res.status(400).json({
+            success: false,
+            error: 'Nama bucket tidak valid'
+        });
+        return;
+    }
+    // 2. Validasi keamanan nama berkas (mencegah path traversal)
     if (!isSafeFileName(filename)) {
         res.status(400).json({
             success: false,
@@ -20,8 +28,16 @@ router.get('/:filename', (req, res) => {
         return;
     }
     const absoluteUploadDir = config.getAbsoluteUploadDir();
-    const filePath = path.join(absoluteUploadDir, filename);
-    // 2. Periksa apakah berkas ada di direktori
+    const filePath = path.join(absoluteUploadDir, bucket, filename);
+    // 3. Pastikan path yang diakses masih berada di dalam direktori upload (double-check traversal)
+    if (!filePath.startsWith(absoluteUploadDir)) {
+        res.status(400).json({
+            success: false,
+            error: 'Akses path tidak diizinkan'
+        });
+        return;
+    }
+    // 4. Periksa apakah berkas ada di direktori
     if (!fs.existsSync(filePath)) {
         res.status(404).json({
             success: false,
@@ -29,10 +45,10 @@ router.get('/:filename', (req, res) => {
         });
         return;
     }
-    // 3. Tambahkan HTTP Header Cache-Control yang agresif karena nama berkas unik/hash
-    // file statis tidak akan berubah isinya, cache berumur 1 tahun (31536000 detik)
+    // 5. Tambahkan HTTP Header Cache-Control yang agresif karena nama berkas unik/hash
+    // File statis tidak akan berubah isinya, cache berumur 1 tahun (31536000 detik)
     res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
-    // 4. Kirim berkas ke client
+    // 6. Kirim berkas ke client
     res.sendFile(filePath, (err) => {
         if (err && !res.headersSent) {
             res.status(500).json({

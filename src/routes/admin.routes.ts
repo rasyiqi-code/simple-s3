@@ -9,14 +9,18 @@ import {
   listLogs
 } from '../controllers/admin.controller.js';
 import { adminAuthMiddleware } from '../middlewares/adminAuth.js';
+import bucketRouter from './bucket.routes.js';
 
 const router = Router();
 
 // Rute login admin tidak dilindungi oleh middleware adminAuth
 router.post('/login', verifyLogin);
 
-// Lindungi rute-rute administratif di bawah ini dengan Master Key validator
+// Lindungi seluruh rute administratif di bawah ini dengan Master Key validator
 router.use(adminAuthMiddleware);
+
+// Endpoint manajemen Bucket
+router.use('/buckets', bucketRouter);
 
 // Endpoint manajemen API Keys
 router.get('/keys', listKeys);

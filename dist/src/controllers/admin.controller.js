@@ -47,11 +47,12 @@ export async function listKeys(req, res, next) {
     }
 }
 /**
- * Membuat API Key dinamis baru
+ * Membuat API Key dinamis baru, wajib terikat ke satu bucket
  * POST /api/admin/keys
+ * Body: { name: string, bucket_name: string }
  */
 export async function createKey(req, res, next) {
-    const { name } = req.body;
+    const { name, bucket_name } = req.body;
     if (!name || name.trim() === '') {
         res.status(400).json({
             success: false,
@@ -59,11 +60,28 @@ export async function createKey(req, res, next) {
         });
         return;
     }
+    if (!bucket_name || bucket_name.trim() === '') {
+        res.status(400).json({
+            success: false,
+            error: 'bucket_name wajib diisi. API Key harus terikat ke satu bucket.'
+        });
+        return;
+    }
+    const bucketNameTrimmed = bucket_name.trim().toLowerCase();
     try {
+        // Pastikan bucket yang dimaksud benar-benar ada di database
+        const bucketExists = db.prepare('SELECT id FROM buckets WHERE name = ?').get(bucketNameTrimmed);
+        if (!bucketExists) {
+            res.status(404).json({
+                success: false,
+                error: `Bucket "${bucketNameTrimmed}" tidak ditemukan. Buat bucket terlebih dahulu.`
+            });
+            return;
+        }
         // Generate token API Key acak sepanjang 32 karakter hex (16 bytes)
         const newKeyValue = `sk_${crypto.randomBytes(16).toString('hex')}`;
         const createdAt = Date.now();
-        db.run('INSERT INTO api_keys (key_value, name, status, created_at) VALUES (?, ?, ?, ?)', [newKeyValue, name.trim(), 'active', createdAt]);
+        db.run('INSERT INTO api_keys (key_value, name, status, bucket_name, created_at) VALUES (?, ?, ?, ?, ?)', [newKeyValue, name.trim(), 'active', bucketNameTrimmed, createdAt]);
         res.status(201).json({
             success: true,
             message: 'API Key baru berhasil dibuat',
@@ -71,6 +89,7 @@ export async function createKey(req, res, next) {
                 keyValue: newKeyValue,
                 name: name.trim(),
                 status: 'active',
+                bucketName: bucketNameTrimmed,
                 createdAt
             }
         });

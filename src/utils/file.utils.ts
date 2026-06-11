@@ -42,7 +42,7 @@ export function getFileExtension(filename: string): string {
 /**
  * Validasi apakah nama file aman dari serangan Path Traversal
  * Mencegah karakter seperti "../" atau "..\"
- * 
+ *
  * @param filename Nama berkas yang diakses/diupload
  * @returns true jika aman, false jika berbahaya
  */
@@ -53,3 +53,15 @@ export function isSafeFileName(filename: string): boolean {
   }
   return true;
 }
+
+/**
+ * Validasi nama bucket: hanya boleh huruf kecil, angka, tanda hubung, dan underscore
+ * Minimal 1 karakter, maksimal 63 karakter (mengikuti konvensi S3)
+ *
+ * @param name Nama bucket yang akan divalidasi
+ * @returns true jika valid, false jika tidak
+ */
+export function isSafeBucketName(name: string): boolean {
+  return /^[a-z0-9_-]{1,63}$/.test(name);
+}
+

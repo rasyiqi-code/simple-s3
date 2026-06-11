@@ -32,6 +32,9 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction):
 
     // Simpan metadata API Key ke dalam object request Express untuk log audit
     (req as any).apiKeyName = apiKeyRecord.name;
+    // Simpan bucket yang terikat dengan API key ini
+    (req as any).bucketName = apiKeyRecord.bucket_name || null;
+
 
     // Jika valid, lanjutkan ke handler berikutnya
     next();
