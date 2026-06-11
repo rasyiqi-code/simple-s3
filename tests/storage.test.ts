@@ -1,0 +1,219 @@
+import { describe, expect, it, beforeAll, afterAll } from 'bun:test';
+import fs from 'fs/promises';
+import existsSync from 'fs';
+import path from 'path';
+import app from '../src/app.js';
+import { config } from '../src/config/index.js';
+
+let testServer: any;
+let testPort: number;
+let baseUrl: string;
+
+// Definisikan API key test dan direktori upload test terpisah
+const TEST_API_KEY = 'test-secret-key';
+const TEST_UPLOAD_DIR = 'uploads_test';
+
+beforeAll(async () => {
+  // Override konfigurasi config untuk testing agar tidak mengganggu data asli
+  config.apiKey = TEST_API_KEY;
+  config.uploadDir = TEST_UPLOAD_DIR;
+  
+  // Pastikan folder bersih sebelum tes berjalan
+  await fs.rm(config.getAbsoluteUploadDir(), { recursive: true, force: true });
+  await fs.mkdir(config.getAbsoluteTempDir(), { recursive: true });
+
+  // Cari port acak bebas untuk server tes
+  testPort = 3000 + Math.floor(Math.random() * 1000);
+  baseUrl = `http://localhost:${testPort}`;
+
+  // Start Express server untuk testing
+  testServer = app.listen(testPort);
+});
+
+afterAll(async () => {
+  // Tutup server setelah semua tes selesai
+  if (testServer) {
+    testServer.close();
+  }
+  // Hapus folder upload test agar lingkungan kembali bersih
+  await fs.rm(config.getAbsoluteUploadDir(), { recursive: true, force: true });
+});
+
+describe('Internal Storage API Service Tests', () => {
+  
+  // 1. Pengujian Endpoint Tidak Ditemukan
+  it('harus mengembalikan 404 ketika rute tidak ditemukan', async () => {
+    const response = await fetch(`${baseUrl}/api/unknown-route`);
+    expect(response.status).toBe(404);
+    
+    const body: any = await response.json();
+    expect(body.success).toBe(false);
+    expect(body.error).toBe('Rute API tidak ditemukan');
+  });
+
+  // 2. Pengujian Autentikasi API Key
+  it('harus menolak request upload jika x-api-key tidak disertakan', async () => {
+    const response = await fetch(`${baseUrl}/api/upload`, {
+      method: 'POST'
+    });
+    expect(response.status).toBe(401);
+    
+    const body: any = await response.json();
+    expect(body.success).toBe(false);
+    expect(body.error).toContain('API Key tidak ditemukan');
+  });
+
+  it('harus menolak request upload jika x-api-key tidak valid', async () => {
+    const response = await fetch(`${baseUrl}/api/upload`, {
+      method: 'POST',
+      headers: {
+        'x-api-key': 'key-yang-salah'
+      }
+    });
+    expect(response.status).toBe(401);
+    
+    const body: any = await response.json();
+    expect(body.success).toBe(false);
+    expect(body.error).toContain('API Key tidak valid');
+  });
+
+  // 3. Pengujian Validasi Multipart Form Data
+  it('harus menolak upload jika payload tidak menyertakan field "file"', async () => {
+    const formData = new FormData();
+    formData.append('bukan_file', 'data_biasa');
+
+    const response = await fetch(`${baseUrl}/api/upload`, {
+      method: 'POST',
+      headers: {
+        'x-api-key': TEST_API_KEY
+      },
+      body: formData
+    });
+
+    expect(response.status).toBe(400);
+    
+    const body: any = await response.json();
+    expect(body.success).toBe(false);
+    expect(body.error).toContain('Harap lampirkan berkas');
+  });
+
+  // 4. Pengujian Upload File Non-Gambar (PDF)
+  it('harus berhasil mengunggah file non-gambar (seperti PDF) dan menyimpannya langsung', async () => {
+    const formData = new FormData();
+    const pdfContent = 'Dummy PDF Content';
+    const blob = new Blob([pdfContent], { type: 'application/pdf' });
+    
+    formData.append('file', blob, 'dokumen_test.pdf');
+
+    const response = await fetch(`${baseUrl}/api/upload`, {
+      method: 'POST',
+      headers: {
+        'x-api-key': TEST_API_KEY
+      },
+      body: formData
+    });
+
+    expect(response.status).toBe(201);
+    
+    const body: any = await response.json();
+    expect(body.success).toBe(true);
+    expect(body.data.originalName).toBe('dokumen_test.pdf');
+    expect(body.data.mimeType).toBe('application/pdf');
+    expect(body.data.url).toContain('/file/');
+
+    // Periksa apakah file fisik benar-benar tersimpan di folder upload
+    const savedFileName = body.data.filename;
+    const physicalPath = path.join(config.getAbsoluteUploadDir(), savedFileName);
+    expect(existsSync.existsSync(physicalPath)).toBe(true);
+
+    // Cek isi file apakah sesuai
+    const fileContent = await fs.readFile(physicalPath, 'utf-8');
+    expect(fileContent).toBe(pdfContent);
+  });
+
+  // 5. Pengujian Upload File Gambar & Optimasi ke WebP
+  it('harus mengonversi gambar PNG menjadi format WebP dan mengompresinya secara otomatis', async () => {
+    const formData = new FormData();
+    
+    // PNG 1x1 transparan piksel minimalis dalam bentuk base64
+    const pngBase64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
+    const buffer = Buffer.from(pngBase64, 'base64');
+    const blob = new Blob([buffer], { type: 'image/png' });
+
+    formData.append('file', blob, 'foto_profile.png');
+
+    const response = await fetch(`${baseUrl}/api/upload`, {
+      method: 'POST',
+      headers: {
+        'x-api-key': TEST_API_KEY
+      },
+      body: formData
+    });
+
+    expect(response.status).toBe(201);
+    
+    const body: any = await response.json();
+    expect(body.success).toBe(true);
+    expect(body.data.originalName).toBe('foto_profile.png');
+    // MimeType harus menjadi image/webp karena dikonversi otomatis
+    expect(body.data.mimeType).toBe('image/webp');
+    expect(body.data.filename).toContain('.webp');
+    expect(body.data.filename).not.toContain('.png');
+
+    // Periksa apakah file fisik .webp hasil kompresi tersimpan
+    const savedFileName = body.data.filename;
+    const physicalPath = path.join(config.getAbsoluteUploadDir(), savedFileName);
+    expect(existsSync.existsSync(physicalPath)).toBe(true);
+
+    // Pastikan file temporary asli di folder temp sudah dibersihkan
+    const tempFiles = await fs.readdir(config.getAbsoluteTempDir());
+    expect(tempFiles.length).toBe(0);
+  });
+
+  // 6. Pengujian Download File (Serving Static Files)
+  it('harus menyajikan berkas statis publik dengan Cache-Control header yang tepat', async () => {
+    // 1. Upload dulu file dokumen
+    const formData = new FormData();
+    formData.append('file', new Blob(['Static Serving Test'], { type: 'application/pdf' }), 'test_file.pdf');
+
+    const uploadResponse = await fetch(`${baseUrl}/api/upload`, {
+      method: 'POST',
+      headers: {
+        'x-api-key': TEST_API_KEY
+      },
+      body: formData
+    });
+    
+    const uploadBody: any = await uploadResponse.json();
+    const generatedFilename = uploadBody.data.filename;
+
+    // 2. Akses file yang diupload via endpoint publik
+    const getResponse = await fetch(`${baseUrl}/file/${generatedFilename}`);
+    expect(getResponse.status).toBe(200);
+
+    // Periksa Header Cache-Control
+    const cacheHeader = getResponse.headers.get('Cache-Control');
+    expect(cacheHeader).toBe('public, max-age=31536000, immutable');
+
+    const content = await getResponse.text();
+    expect(content).toBe('Static Serving Test');
+  });
+
+  it('harus menolak request file jika mengandung pola Path Traversal', async () => {
+    const response = await fetch(`${baseUrl}/file/..%2fpackage.json`);
+    expect(response.status).toBe(400);
+
+    const body: any = await response.json();
+    expect(body.success).toBe(false);
+    expect(body.error).toContain('tidak aman');
+  });
+
+  it('harus mengembalikan 404 jika file tidak ditemukan', async () => {
+    const response = await fetch(`${baseUrl}/file/file-yang-tidak-pernah-ada.pdf`);
+    expect(response.status).toBe(404);
+
+    const body: any = await response.json();
+    expect(body.success).toBe(false);
+    expect(body.error).toContain('tidak ditemukan');
+  });
+});
