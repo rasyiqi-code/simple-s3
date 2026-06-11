@@ -60,8 +60,18 @@ function ensureEnvApiKey(): void {
 // Jalankan pemeriksaan otomatis sebelum memuat dotenv
 ensureEnvApiKey();
 
-// Memuat environment variables dari berkas .env secara eksplisit menggunakan projectRoot
-dotenv.config({ path: path.join(projectRoot, '.env') });
+// Memuat environment variables dari berkas .env lokal proyek jika ada
+const localEnvPath = path.join(projectRoot, '.env');
+if (fs.existsSync(localEnvPath)) {
+  dotenv.config({ path: localEnvPath });
+}
+
+// Memuat environment variables dari berkas .env di luar proyek (parent directory) jika ada
+// Ini memastikan file konfigurasi di luar folder deploy tidak ikut terhapus saat redeploy
+const parentEnvPath = path.join(projectRoot, '..', '.env');
+if (fs.existsSync(parentEnvPath)) {
+  dotenv.config({ path: parentEnvPath, override: true });
+}
 
 // Buat API Key fallback acak yang aman jika tidak diset di .env
 const fallbackApiKey = `sk_master_${crypto.randomBytes(16).toString('hex')}`;

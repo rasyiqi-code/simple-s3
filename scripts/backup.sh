@@ -11,11 +11,18 @@ SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &> /dev/null && pwd)
 APP_DIR=$(dirname "$SCRIPT_DIR")
 RETENTION_DAYS=30                          # Jumlah hari cadangan disimpan sebelum dihapus
 
-# Membaca variabel environment dari file .env jika ada
+# Membaca variabel environment dari file .env di dalam proyek jika ada
 if [ -f "${APP_DIR}/.env" ]; then
-    echo "[INFO] Membaca konfigurasi dari file .env..."
+    echo "[INFO] Membaca konfigurasi dari file .env proyek..."
     # Ambil nilai dari .env tapi abaikan baris komentar atau baris kosong
     export $(grep -v '^#' "${APP_DIR}/.env" | xargs)
+fi
+
+# Membaca variabel environment dari file .env di luar proyek (parent folder) jika ada
+PARENT_ENV="$(dirname "${APP_DIR}")/.env"
+if [ -f "${PARENT_ENV}" ]; then
+    echo "[INFO] Membaca konfigurasi dari file .env luar (parent): ${PARENT_ENV}..."
+    export $(grep -v '^#' "${PARENT_ENV}" | xargs)
 fi
 
 # Tentukan direktori backup (default ke /var/backups/simple-s3 jika tidak diset)
