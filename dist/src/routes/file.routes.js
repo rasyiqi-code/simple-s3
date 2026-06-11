@@ -2,6 +2,7 @@ import { Router } from 'express';
 import path from 'path';
 import fs from 'fs';
 import { config } from '../config/index.js';
+import { db } from '../config/database.js';
 import { isSafeFileName, isSafeBucketName } from '../utils/file.utils.js';
 const router = Router();
 /**
@@ -59,13 +60,53 @@ router.get('/:bucket/:filename', (req, res) => {
     });
 });
 /**
- * Route GET /file/:filename (Fallback & Backward Compatibility)
- * Menyajikan berkas statis dari bucket default atau root uploads untuk URL lama yang tidak memiliki segment bucket.
+ * Route GET /file/:identifier
+ * Jika :identifier adalah nama bucket yang terdaftar, kembalikan daftar berkas (JSON).
+ * Jika :identifier adalah nama berkas, jalankan fallback serving berkas (Backward Compatibility).
  */
-router.get('/:filename', (req, res) => {
-    const { filename } = req.params;
-    // 1. Validasi keamanan nama berkas
-    if (!isSafeFileName(filename)) {
+router.get('/:identifier', (req, res) => {
+    const { identifier } = req.params;
+    // 1. Cek apakah identifier ini adalah nama bucket yang terdaftar di database
+    let isBucket = false;
+    if (isSafeBucketName(identifier)) {
+        try {
+            const bucketRecord = db.prepare('SELECT id FROM buckets WHERE name = ?').get(identifier);
+            if (bucketRecord) {
+                isBucket = true;
+            }
+        }
+        catch {
+            // Abaikan error database, asumsikan bukan bucket untuk lanjut ke fallback file serving
+        }
+    }
+    if (isBucket) {
+        // Sajikan daftar berkas di dalam bucket
+        try {
+            const files = db.prepare('SELECT original_name, filename, mime_type, size, uploaded_at FROM files WHERE bucket_name = ? ORDER BY uploaded_at DESC').all(identifier);
+            const fileList = files.map(file => ({
+                originalName: file.original_name,
+                filename: file.filename,
+                mimeType: file.mime_type,
+                size: file.size,
+                uploadedAt: file.uploaded_at,
+                url: `/file/${identifier}/${file.filename}`
+            }));
+            res.status(200).json({
+                success: true,
+                bucket: identifier,
+                files: fileList
+            });
+        }
+        catch (error) {
+            res.status(500).json({
+                success: false,
+                error: 'Gagal mengambil daftar berkas dari bucket'
+            });
+        }
+        return;
+    }
+    // 2. Jika bukan nama bucket, asumsikan sebagai :filename (Fallback)
+    if (!isSafeFileName(identifier)) {
         res.status(400).json({
             success: false,
             error: 'Nama berkas tidak valid atau tidak aman'
@@ -74,12 +115,12 @@ router.get('/:filename', (req, res) => {
     }
     const absoluteUploadDir = config.getAbsoluteUploadDir();
     // Cari pertama di folder 'default'
-    let filePath = path.join(absoluteUploadDir, 'default', filename);
+    let filePath = path.join(absoluteUploadDir, 'default', identifier);
     // Jika tidak ada di folder 'default', cari di root upload directory (lokasi file lama)
     if (!fs.existsSync(filePath)) {
-        filePath = path.join(absoluteUploadDir, filename);
+        filePath = path.join(absoluteUploadDir, identifier);
     }
-    // 2. Pastikan path yang diakses masih berada di dalam direktori upload
+    // Pastikan path yang diakses masih berada di dalam direktori upload
     if (!filePath.startsWith(absoluteUploadDir)) {
         res.status(400).json({
             success: false,
@@ -87,7 +128,7 @@ router.get('/:filename', (req, res) => {
         });
         return;
     }
-    // 3. Periksa apakah berkas ada
+    // Periksa apakah berkas ada
     if (!fs.existsSync(filePath)) {
         res.status(404).json({
             success: false,
@@ -95,9 +136,9 @@ router.get('/:filename', (req, res) => {
         });
         return;
     }
-    // 4. Tambahkan HTTP Header Cache-Control
+    // Tambahkan HTTP Header Cache-Control
     res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
-    // 5. Kirim berkas ke client
+    // Kirim berkas ke client
     res.sendFile(filePath, (err) => {
         if (err && !res.headersSent) {
             res.status(500).json({
