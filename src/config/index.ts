@@ -2,10 +2,28 @@ import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 import dotenv from 'dotenv';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Cari file .env dengan memanjat ke atas dari folder file ini berada
+function findProjectRoot(startDir: string): string {
+  let currentDir = startDir;
+  while (currentDir !== path.dirname(currentDir)) { // Berhenti di root file system
+    if (fs.existsSync(path.join(currentDir, 'package.json'))) {
+      return currentDir;
+    }
+    currentDir = path.dirname(currentDir);
+  }
+  return process.cwd(); // Fallback ke process.cwd jika package.json tidak ditemukan
+}
+
+const projectRoot = findProjectRoot(__dirname);
 
 // Fungsi untuk men-generate API_KEY secara otomatis di file .env jika kosong
 function ensureEnvApiKey(): void {
-  const envPath = path.join(process.cwd(), '.env');
+  const envPath = path.join(projectRoot, '.env');
   if (!fs.existsSync(envPath)) {
     return;
   }
@@ -42,8 +60,8 @@ function ensureEnvApiKey(): void {
 // Jalankan pemeriksaan otomatis sebelum memuat dotenv
 ensureEnvApiKey();
 
-// Memuat environment variables dari berkas .env
-dotenv.config();
+// Memuat environment variables dari berkas .env secara eksplisit menggunakan projectRoot
+dotenv.config({ path: path.join(projectRoot, '.env') });
 
 // Buat API Key fallback acak yang aman jika tidak diset di .env
 const fallbackApiKey = `sk_master_${crypto.randomBytes(16).toString('hex')}`;
@@ -66,14 +84,14 @@ export const config = {
   getAbsoluteUploadDir(): string {
     return path.isAbsolute(this.uploadDir)
       ? this.uploadDir
-      : path.join(process.cwd(), this.uploadDir);
+      : path.join(projectRoot, this.uploadDir);
   },
 
   // Mendapatkan path absolut direktori database
   getAbsoluteDatabaseDir(): string {
     return path.isAbsolute(this.databaseDir)
       ? this.databaseDir
-      : path.join(process.cwd(), this.databaseDir);
+      : path.join(projectRoot, this.databaseDir);
   },
 
   // Mendapatkan path absolut berkas database SQLite (.db)
