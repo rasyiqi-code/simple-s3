@@ -4,6 +4,7 @@ import existsSync from 'fs';
 import path from 'path';
 import app from '../src/app.js';
 import { config } from '../src/config/index.js';
+import { db, runMigrations } from '../src/config/database.js';
 
 let testServer: any;
 let testPort: number;
@@ -17,6 +18,19 @@ beforeAll(async () => {
   // Override konfigurasi config untuk testing agar tidak mengganggu data asli
   config.apiKey = TEST_API_KEY;
   config.uploadDir = TEST_UPLOAD_DIR;
+  
+  // Jalankan migrasi database
+  runMigrations();
+
+  // Bersihkan tabel database uji agar terisolasi dan bersih
+  db.run('DELETE FROM api_keys');
+  db.run('DELETE FROM files');
+
+  // Masukkan API key uji ke database agar middleware auth mengenalinya
+  db.run(
+    'INSERT INTO api_keys (key_value, name, status, created_at) VALUES (?, ?, ?, ?)',
+    [TEST_API_KEY, 'API Key Uji Coba', 'active', Date.now()]
+  );
   
   // Pastikan folder bersih sebelum tes berjalan
   await fs.rm(config.getAbsoluteUploadDir(), { recursive: true, force: true });
@@ -215,5 +229,91 @@ describe('Internal Storage API Service Tests', () => {
     const body: any = await response.json();
     expect(body.success).toBe(false);
     expect(body.error).toContain('tidak ditemukan');
+  });
+
+  // --- SEKSI TEST BARU: API ADMIN & DATABASE SQLITE ---
+  describe('Admin Dashboard API Tests (Fase 2)', () => {
+    it('harus memverifikasi login admin dengan master key yang benar', async () => {
+      const response = await fetch(`${baseUrl}/api/admin/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ masterKey: TEST_API_KEY })
+      });
+      expect(response.status).toBe(200);
+      const body: any = await response.json();
+      expect(body.success).toBe(true);
+    });
+
+    it('harus menolak login admin dengan master key yang salah', async () => {
+      const response = await fetch(`${baseUrl}/api/admin/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ masterKey: 'wrong-key' })
+      });
+      expect(response.status).toBe(401);
+    });
+
+    it('harus menolak akses rute admin jika tidak membawa header x-admin-key', async () => {
+      const response = await fetch(`${baseUrl}/api/admin/keys`);
+      expect(response.status).toBe(401);
+    });
+
+    it('harus mampu membuat API key dinamis baru, menggunakannya untuk upload, lalu menghapusnya', async () => {
+      // 1. Buat API key dinamis baru
+      const createResponse = await fetch(`${baseUrl}/api/admin/keys`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-admin-key': TEST_API_KEY
+        },
+        body: JSON.stringify({ name: 'Key Test Integrasi' })
+      });
+      expect(createResponse.status).toBe(201);
+      const createBody: any = await createResponse.json();
+      expect(createBody.success).toBe(true);
+      const newKey = createBody.data.keyValue;
+      expect(newKey).toContain('sk_');
+
+      // 2. Cek apakah key baru masuk dalam list
+      const listResponse = await fetch(`${baseUrl}/api/admin/keys`, {
+        headers: { 'x-admin-key': TEST_API_KEY }
+      });
+      const listBody: any = await listResponse.json();
+      expect(listBody.data.some((k: any) => k.key_value === newKey)).toBe(true);
+
+      // 3. Gunakan key baru untuk mengupload berkas PDF dummy
+      const formData = new FormData();
+      formData.append('file', new Blob(['Dynamic Key Upload Test'], { type: 'application/pdf' }), 'dynamic_test.pdf');
+      const uploadResponse = await fetch(`${baseUrl}/api/upload`, {
+        method: 'POST',
+        headers: { 'x-api-key': newKey },
+        body: formData
+      });
+      expect(uploadResponse.status).toBe(201);
+      const uploadBody: any = await uploadResponse.json();
+      const generatedFilename = uploadBody.data.filename;
+
+      // 4. Cek apakah berkas tercatat di list files admin
+      const filesResponse = await fetch(`${baseUrl}/api/admin/files`, {
+        headers: { 'x-admin-key': TEST_API_KEY }
+      });
+      const filesBody: any = await filesResponse.json();
+      expect(filesBody.data.some((f: any) => f.filename === generatedFilename)).toBe(true);
+
+      // 5. Hapus berkas tersebut via admin file manager
+      const deleteFileResponse = await fetch(`${baseUrl}/api/admin/files/${generatedFilename}`, {
+        method: 'DELETE',
+        headers: { 'x-admin-key': TEST_API_KEY }
+      });
+      expect(deleteFileResponse.status).toBe(200);
+
+      // 6. Hapus API key dinamis tersebut
+      const keyRecord = listBody.data.find((k: any) => k.key_value === newKey);
+      const deleteKeyResponse = await fetch(`${baseUrl}/api/admin/keys/${keyRecord.id}`, {
+        method: 'DELETE',
+        headers: { 'x-admin-key': TEST_API_KEY }
+      });
+      expect(deleteKeyResponse.status).toBe(200);
+    });
   });
 });

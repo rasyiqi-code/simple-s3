@@ -29,3 +29,7 @@ build/
 
 # Test files
 test.png
+
+# Database files
+data/
+*.db

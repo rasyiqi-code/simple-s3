@@ -1,6 +1,10 @@
 import fs from 'fs';
 import app from './app.js';
 import { config } from './config/index.js';
+import { runMigrations } from './config/database.js';
+
+// Jalankan migrasi database SQLite
+runMigrations();
 
 // Fungsi untuk memastikan folder penyimpanan permanen dan temporary sudah ada sebelum server berjalan
 function initializeDirectories(): void {

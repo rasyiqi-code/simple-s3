@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import fs from 'fs/promises';
 import path from 'path';
 import { config } from '../config/index.js';
+import { db } from '../config/database.js';
 import { generateUniqueFileName, getFileExtension } from '../utils/file.utils.js';
 import { isImageFile, optimizeImageToWebP } from '../utils/optimizer.utils.js';
 
@@ -60,6 +61,12 @@ export async function uploadSingleFile(
       // Jika bukan file gambar, pindahkan langsung dari folder temp ke permanen
       await fs.rename(tempFilePath, finalPath);
     }
+
+    // Catat metadata file ke database SQLite
+    db.run(
+      'INSERT INTO files (original_name, filename, mime_type, size, uploaded_at) VALUES (?, ?, ?, ?, ?)',
+      [originalName, finalFileName, finalMimeType, finalSize, Date.now()]
+    );
 
     // Bangun URL akses publik file
     // Menyediakan absolute path relatif dari hostname

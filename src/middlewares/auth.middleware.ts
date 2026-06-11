@@ -1,8 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
-import { config } from '../config/index.js';
+import { db } from '../config/database.js';
 
 /**
- * Middleware untuk memvalidasi request menggunakan API Key statis di HTTP header
+ * Middleware untuk memvalidasi request menggunakan API Key dinamis dari database SQLite
  * Header yang digunakan: x-api-key
  */
 export function authMiddleware(req: Request, res: Response, next: NextFunction): void {
@@ -17,15 +17,26 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction):
     return;
   }
 
-  // Bandingkan dengan API Key yang dikonfigurasi di environment variable
-  if (apiKeyHeader !== config.apiKey) {
-    res.status(401).json({
-      success: false,
-      error: 'Unauthorized: API Key tidak valid'
-    });
-    return;
-  }
+  try {
+    // Cari API Key di database SQLite yang memiliki status 'active'
+    const query = db.prepare('SELECT * FROM api_keys WHERE key_value = ? AND status = ?');
+    const apiKeyRecord = query.get(apiKeyHeader as string, 'active');
 
-  // Jika valid, lanjutkan ke handler berikutnya
-  next();
+    if (!apiKeyRecord) {
+      res.status(401).json({
+        success: false,
+        error: 'Unauthorized: API Key tidak valid atau telah dinonaktifkan'
+      });
+      return;
+    }
+
+    // Jika valid, lanjutkan ke handler berikutnya
+    next();
+  } catch (error) {
+    console.error('[AUTH MIDDLEWARE] Gagal memverifikasi API Key:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Terjadi kesalahan internal saat memproses autentikasi'
+    });
+  }
 }

@@ -1,7 +1,9 @@
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
+import path from 'path';
 import uploadRouter from './routes/upload.routes.js';
 import fileRouter from './routes/file.routes.js';
+import adminRouter from './routes/admin.routes.js';
 
 const app = express();
 
@@ -10,8 +12,14 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Sajikan Dashboard Admin (SPA) secara statis dari folder public
+app.use(express.static(path.join(process.cwd(), 'public')));
+
 // Rute API untuk Upload
 app.use('/api', uploadRouter);
+
+// Rute API Administratif
+app.use('/api/admin', adminRouter);
 
 // Rute Publik untuk static file serving
 app.use('/file', fileRouter);
