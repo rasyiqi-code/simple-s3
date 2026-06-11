@@ -3,7 +3,7 @@ import path from 'path';
 import crypto from 'crypto';
 import { db } from '../config/database.js';
 import { config } from '../config/index.js';
-import { isSafeFileName, getDiskSpaceInfo } from '../utils/file.utils.js';
+import { isSafeFileName, getDiskSpaceInfo, getAccountUsedSpace } from '../utils/file.utils.js';
 /**
  * Memverifikasi login dasbor admin menggunakan Master API Key
  * POST /api/admin/login
@@ -135,12 +135,25 @@ export async function listFiles(req, res, next) {
         const totalUsedBytes = files.reduce((acc, f) => acc + f.size, 0);
         // 2. Dapatkan informasi kapasitas disk fisik (total space dan free space) dari sistem operasi
         const diskInfo = getDiskSpaceInfo(config.getAbsoluteUploadDir());
-        // 3. Hitung kapasitas yang digunakan oleh OS, instalasi Simple S3, dan project lain di luar file upload Simple S3
-        // Rumus: Terpakai Lain = Total Disk - Free Space - Terpakai Simple S3
-        const usedOtherDiskBytes = Math.max(0, diskInfo.total - diskInfo.free - totalUsedBytes);
-        // 4. Hitung kapasitas penyimpanan total teoretis yang dialokasikan untuk Simple S3
-        // Rumus: Total untuk Simple S3 = Total Disk - Terpakai Lain
-        const totalStorageBytes = Math.max(0, diskInfo.total - usedOtherDiskBytes);
+        // 3. Dapatkan total kapasitas yang digunakan oleh seluruh akun/home directory user
+        const accountUsedBytes = getAccountUsedSpace();
+        // 4. Hitung kapasitas yang digunakan oleh OS, instalasi Simple S3, dan project lain di luar file upload Simple S3
+        // Jika du berhasil mendapatkan total terpakai akun, gunakan du. Jika gagal, gunakan filesystem dasar.
+        let usedOtherDiskBytes = 0;
+        if (accountUsedBytes > 0) {
+            usedOtherDiskBytes = Math.max(0, accountUsedBytes - totalUsedBytes);
+        }
+        else {
+            usedOtherDiskBytes = Math.max(0, diskInfo.total - diskInfo.free - totalUsedBytes);
+        }
+        // 5. Tentukan batas kuota penyimpanan (Gunakan MAX_STORAGE_GB dari env jika diset, jika tidak, gunakan kapasitas total disk fisik sesungguhnya)
+        let limitBytes = diskInfo.total;
+        if (config.maxStorageGb && config.maxStorageGb > 0) {
+            limitBytes = config.maxStorageGb * 1024 * 1024 * 1024;
+        }
+        // 6. Hitung kapasitas penyimpanan total teoretis yang dialokasikan untuk Simple S3
+        // Rumus: Total untuk Simple S3 = Kuota Akun (atau Disk Total) - Terpakai Lainnya
+        const totalStorageBytes = Math.max(0, limitBytes - usedOtherDiskBytes);
         res.status(200).json({
             success: true,
             data: files,

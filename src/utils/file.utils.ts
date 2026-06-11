@@ -1,6 +1,8 @@
 import crypto from 'crypto';
 import path from 'path';
 import fs from 'fs';
+import { execSync } from 'child_process';
+import os from 'os';
 
 /**
  * Membuat nama file unik menggunakan kombinasi hash SHA256 dari nama asli + timestamp
@@ -86,5 +88,35 @@ export function getDiskSpaceInfo(targetDir: string): { free: number, total: numb
       total: 100 * 1024 * 1024 * 1024
     };
   }
+}
+
+/**
+ * Mendapatkan total kapasitas yang digunakan oleh seluruh file di direktori home user (atau folder proyek)
+ * Menggunakan perintah `du -sb` di sistem Linux untuk performa cepat dan akurat.
+ *
+ * @returns Ukuran dalam byte
+ */
+export function getAccountUsedSpace(): number {
+  try {
+    const homeDir = os.homedir();
+    // Jalankan du -sb pada home directory untuk mendapatkan ukuran total akun dalam byte
+    const output = execSync(`du -sb "${homeDir}"`, { timeout: 4000, stdio: ['ignore', 'pipe', 'ignore'] }).toString();
+    const match = output.trim().match(/^(\d+)/);
+    if (match) {
+      return parseInt(match[1], 10);
+    }
+  } catch (error) {
+    // Jika home directory tidak bisa diakses/gagal, coba folder proyek saat ini
+    try {
+      const output = execSync(`du -sb "${process.cwd()}"`, { timeout: 2000, stdio: ['ignore', 'pipe', 'ignore'] }).toString();
+      const match = output.trim().match(/^(\d+)/);
+      if (match) {
+        return parseInt(match[1], 10);
+      }
+    } catch {
+      // Abaikan
+    }
+  }
+  return 0; // Fallback jika gagal total
 }
 

@@ -10,6 +10,7 @@ export const config = {
     apiKey: process.env.API_KEY || 'local-dev-api-key',
     uploadDir: process.env.UPLOAD_DIR || defaultUploadDir,
     maxFileSize: parseInt(process.env.MAX_FILE_SIZE || '52428800', 10), // Default 50MB
+    maxStorageGb: parseInt(process.env.MAX_STORAGE_GB || '200', 10),
     allowedExtensions: (process.env.ALLOWED_EXTENSIONS || 'jpg,jpeg,png,gif,webp,pdf,mp4,zip,docx,xlsx')
         .split(',')
         .map(ext => ext.trim().toLowerCase()),
