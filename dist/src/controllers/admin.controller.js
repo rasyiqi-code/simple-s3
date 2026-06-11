@@ -1,7 +1,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import crypto from 'crypto';
-import { db } from '../config/database.js';
+import { db, getValidMasterKey } from '../config/database.js';
 import { config } from '../config/index.js';
 import { isSafeFileName, getDiskSpaceInfo, getAccountUsedSpace } from '../utils/file.utils.js';
 /**
@@ -17,8 +17,8 @@ export async function verifyLogin(req, res) {
         });
         return;
     }
-    // Bandingkan dengan API_KEY utama di env
-    if (masterKey !== config.apiKey) {
+    // Bandingkan dengan Master API Key yang valid (env atau database)
+    if (masterKey !== getValidMasterKey()) {
         res.status(401).json({
             success: false,
             error: 'Master API Key tidak valid'

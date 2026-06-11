@@ -1,4 +1,4 @@
-import { config } from '../config/index.js';
+import { getValidMasterKey } from '../config/database.js';
 /**
  * Middleware untuk memvalidasi akses dasbor admin menggunakan Master API Key
  * Header yang dicari: x-admin-key
@@ -13,8 +13,8 @@ export function adminAuthMiddleware(req, res, next) {
         });
         return;
     }
-    // 2. Cocokkan dengan Master API Key yang dikonfigurasi di berkas .env
-    if (adminKeyHeader !== config.apiKey) {
+    // 2. Cocokkan dengan Master API Key yang valid (env atau database)
+    if (adminKeyHeader !== getValidMasterKey()) {
         res.status(401).json({
             success: false,
             error: 'Unauthorized: Kunci admin tidak valid'

@@ -10,7 +10,9 @@
     "build": "tsc",
     "prestart": "tsc",
     "start": "node dist/src/index.js",
-    "test": "NODE_ENV=test vitest run"
+    "test": "NODE_ENV=test vitest run",
+    "show-key": "tsx src/cli/manage-key.ts",
+    "reset-key": "tsx src/cli/manage-key.ts --reset"
   },
   "dependencies": {
     "cors": "^2.8.5",
