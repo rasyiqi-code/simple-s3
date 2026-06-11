@@ -5,7 +5,8 @@ import {
   createKey,
   deleteKey,
   listFiles,
-  deleteFile
+  deleteFile,
+  listLogs
 } from '../controllers/admin.controller.js';
 import { adminAuthMiddleware } from '../middlewares/adminAuth.js';
 
@@ -25,5 +26,8 @@ router.delete('/keys/:id', deleteKey);
 // Endpoint manajemen Files (File Explorer)
 router.get('/files', listFiles);
 router.delete('/files/:filename', deleteFile);
+
+// Endpoint log audit aktivitas
+router.get('/logs', listLogs);
 
 export default router;

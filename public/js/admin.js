@@ -37,6 +37,10 @@ document.addEventListener('DOMContentLoaded', () => {
   const keyNameInput = document.getElementById('key-name');
   const closeModalBtns = document.querySelectorAll('.close-modal-btn');
 
+  // Elements Tab Audit Logs
+  const logsList = document.getElementById('logs-list');
+  const refreshLogsBtn = document.getElementById('refresh-logs-btn');
+
   // Toast
   const toast = document.getElementById('toast');
 
@@ -156,6 +160,10 @@ document.addEventListener('DOMContentLoaded', () => {
       pageTitle.textContent = 'API Keys';
       pageSubtitle.textContent = 'Kelola kunci akses dinamis untuk integrasi aplikasi web klien';
       loadKeys();
+    } else if (tabName === 'logs') {
+      pageTitle.textContent = 'Audit Logs';
+      pageSubtitle.textContent = 'Pantau seluruh rekaman aktivitas transfer data secara real-time';
+      loadLogs();
     }
   }
 
@@ -481,6 +489,68 @@ document.addEventListener('DOMContentLoaded', () => {
       }[tag] || tag)
     );
   }
+
+  // --- LOGIKA TAB: AUDIT LOGS ---
+  async function loadLogs() {
+    logsList.innerHTML = `
+      <tr>
+        <td colspan="4" class="text-center loading-state">
+          <i class="fa-solid fa-spinner fa-spin"></i> Memuat log audit...
+        </td>
+      </tr>
+    `;
+
+    try {
+      const response = await fetchAPI('/api/admin/logs');
+      if (response.success) {
+        renderLogs(response.data);
+      }
+    } catch (err) {
+      logsList.innerHTML = `
+        <tr>
+          <td colspan="4" class="text-center error-msg" style="padding: 40px;">
+            Gagal memuat log audit dari server.
+          </td>
+        </tr>
+      `;
+    }
+  }
+
+  function renderLogs(logs) {
+    if (logs.length === 0) {
+      logsList.innerHTML = `
+        <tr>
+          <td colspan="4" class="text-center loading-state">
+            <i class="fa-solid fa-clock-rotate-left" style="font-size: 2rem; display: block; margin-bottom: 10px;"></i>
+            Belum ada log aktivitas keamanan yang tercatat.
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    logsList.innerHTML = '';
+    logs.forEach(log => {
+      const tr = document.createElement('tr');
+      const logDate = new Date(log.timestamp).toLocaleString('id-ID');
+      
+      // Pilih kelas warna badge berdasarkan aksi
+      let badgeClass = 'badge-upload-single';
+      if (log.action === 'UPLOAD_MULTIPLE') badgeClass = 'badge-upload-multiple';
+      else if (log.action === 'DELETE_FILE') badgeClass = 'badge-delete-file';
+
+      tr.innerHTML = `
+        <td>${logDate}</td>
+        <td><strong>${escapeHTML(log.api_key_name)}</strong></td>
+        <td><span class="badge ${badgeClass}">${log.action}</span></td>
+        <td>${escapeHTML(log.details)}</td>
+      `;
+
+      logsList.appendChild(tr);
+    });
+  }
+
+  refreshLogsBtn.addEventListener('click', loadLogs);
 
   // Jalankan autentikasi di awal load
   initAuth();

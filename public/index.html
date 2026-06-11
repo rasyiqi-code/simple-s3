@@ -54,6 +54,9 @@
         <button class="nav-item" data-tab="apikeys">
           <i class="fa-solid fa-key"></i> API Keys
         </button>
+        <button class="nav-item" data-tab="logs">
+          <i class="fa-solid fa-clock-rotate-left"></i> Audit Logs
+        </button>
       </nav>
 
       <div class="sidebar-footer">
@@ -144,6 +147,39 @@
               <tr>
                 <td colspan="5" class="text-center loading-state">
                   <i class="fa-solid fa-spinner fa-spin"></i> Memuat API Key...
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- SEKSI TAB: AUDIT LOGS -->
+      <section id="tab-logs" class="tab-content">
+        <div class="toolbar justify-between">
+          <div class="description-text">
+            <h3>Audit Logs Keamanan</h3>
+            <p>Riwayat aktivitas perekaman pengunggahan dan penghapusan berkas oleh masing-masing API Key.</p>
+          </div>
+          <button id="refresh-logs-btn" class="btn btn-secondary">
+            <i class="fa-solid fa-arrows-rotate"></i> Refresh Logs
+          </button>
+        </div>
+
+        <div class="table-container glass">
+          <table id="logs-table">
+            <thead>
+              <tr>
+                <th>Waktu</th>
+                <th>API Key Pengguna</th>
+                <th>Jenis Aksi</th>
+                <th>Keterangan Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="logs-list">
+              <tr>
+                <td colspan="4" class="text-center loading-state">
+                  <i class="fa-solid fa-spinner fa-spin"></i> Memuat log audit...
                 </td>
               </tr>
             </tbody>

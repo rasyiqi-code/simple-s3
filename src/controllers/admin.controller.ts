@@ -181,3 +181,19 @@ export async function deleteFile(req: Request, res: Response, next: NextFunction
     next(error);
   }
 }
+
+/**
+ * Mendapatkan daftar seluruh log aktivitas audit dari database
+ * GET /api/admin/logs
+ */
+export async function listLogs(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const logs = db.query('SELECT * FROM activity_logs ORDER BY timestamp DESC LIMIT 100').all();
+    res.status(200).json({
+      success: true,
+      data: logs
+    });
+  } catch (error) {
+    next(error);
+  }
+}

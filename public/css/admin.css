@@ -454,6 +454,18 @@ tbody tr:hover {
   background: rgba(16, 185, 129, 0.15);
   color: #6ee7b7;
 }
+.badge-upload-single {
+  background: rgba(99, 102, 241, 0.15);
+  color: #a5b4fc;
+}
+.badge-upload-multiple {
+  background: rgba(139, 92, 246, 0.15);
+  color: #c4b5fd;
+}
+.badge-delete-file {
+  background: rgba(239, 68, 68, 0.15);
+  color: #fca5a5;
+}
 
 .file-name-cell {
   display: flex;

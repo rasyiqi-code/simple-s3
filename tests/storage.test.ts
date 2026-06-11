@@ -315,5 +315,84 @@ describe('Internal Storage API Service Tests', () => {
       });
       expect(deleteKeyResponse.status).toBe(200);
     });
+
+    it('harus mampu mengunggah banyak berkas sekaligus secara paralel dan mengonversi gambar jika ada', async () => {
+      const formData = new FormData();
+      
+      // File 1: Teks PDF dummy
+      formData.append('files', new Blob(['File 1 Content'], { type: 'application/pdf' }), 'multiple_1.pdf');
+      
+      // File 2: Gambar PNG dummy 1x1 base64
+      const pngBase64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
+      const buffer = Buffer.from(pngBase64, 'base64');
+      formData.append('files', new Blob([buffer], { type: 'image/png' }), 'multiple_2.png');
+
+      const response = await fetch(`${baseUrl}/api/upload/multiple`, {
+        method: 'POST',
+        headers: { 'x-api-key': TEST_API_KEY },
+        body: formData
+      });
+
+      expect(response.status).toBe(201);
+      const body: any = await response.json();
+      expect(body.success).toBe(true);
+      expect(body.data.length).toBe(2);
+
+      // Verifikasi file 1 (.pdf)
+      const file1 = body.data.find((f: any) => f.originalName === 'multiple_1.pdf');
+      expect(file1).toBeDefined();
+      expect(file1.mimeType).toBe('application/pdf');
+
+      // Verifikasi file 2 (.png teroptimasi ke .webp)
+      const file2 = body.data.find((f: any) => f.originalName === 'multiple_2.png');
+      expect(file2).toBeDefined();
+      expect(file2.mimeType).toBe('image/webp');
+      expect(file2.filename).toContain('.webp');
+
+      // Bersihkan file test fisik
+      await fs.unlink(path.join(config.getAbsoluteUploadDir(), file1.filename)).catch(() => {});
+      await fs.unlink(path.join(config.getAbsoluteUploadDir(), file2.filename)).catch(() => {});
+    });
+
+    it('harus mampu menghapus berkas oleh klien menggunakan API Key klien yang valid', async () => {
+      // 1. Upload dulu file dokumen
+      const formData = new FormData();
+      formData.append('file', new Blob(['Client Delete Test'], { type: 'application/pdf' }), 'client_del.pdf');
+
+      const uploadResponse = await fetch(`${baseUrl}/api/upload`, {
+        method: 'POST',
+        headers: { 'x-api-key': TEST_API_KEY },
+        body: formData
+      });
+      const uploadBody: any = await uploadResponse.json();
+      const generatedFilename = uploadBody.data.filename;
+
+      // 2. Kirim request delete oleh klien
+      const deleteResponse = await fetch(`${baseUrl}/api/file/${generatedFilename}`, {
+        method: 'DELETE',
+        headers: { 'x-api-key': TEST_API_KEY }
+      });
+      expect(deleteResponse.status).toBe(200);
+      const deleteBody: any = await deleteResponse.json();
+      expect(deleteBody.success).toBe(true);
+
+      // Cek apakah file fisik terhapus
+      const filePath = path.join(config.getAbsoluteUploadDir(), generatedFilename);
+      expect(existsSync.existsSync(filePath)).toBe(false);
+    });
+
+    it('harus mencatat seluruh aktivitas audit log di database SQLite dan dapat diakses oleh admin', async () => {
+      const response = await fetch(`${baseUrl}/api/admin/logs`, {
+        headers: { 'x-admin-key': TEST_API_KEY }
+      });
+      expect(response.status).toBe(200);
+      const body: any = await response.json();
+      expect(body.success).toBe(true);
+      
+      // Harus ada log tercatat (minimal aksi UPLOAD_SINGLE dan DELETE_FILE dari tes di atas)
+      expect(body.data.length).toBeGreaterThan(0);
+      expect(body.data.some((l: any) => l.action === 'UPLOAD_SINGLE')).toBe(true);
+      expect(body.data.some((l: any) => l.action === 'DELETE_FILE')).toBe(true);
+    });
   });
 });

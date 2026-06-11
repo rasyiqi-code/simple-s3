@@ -20,7 +20,7 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction):
   try {
     // Cari API Key di database SQLite yang memiliki status 'active'
     const query = db.prepare('SELECT * FROM api_keys WHERE key_value = ? AND status = ?');
-    const apiKeyRecord = query.get(apiKeyHeader as string, 'active');
+    const apiKeyRecord = query.get(apiKeyHeader as string, 'active') as any;
 
     if (!apiKeyRecord) {
       res.status(401).json({
@@ -29,6 +29,9 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction):
       });
       return;
     }
+
+    // Simpan metadata API Key ke dalam object request Express untuk log audit
+    (req as any).apiKeyName = apiKeyRecord.name;
 
     // Jika valid, lanjutkan ke handler berikutnya
     next();

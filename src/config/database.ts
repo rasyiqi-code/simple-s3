@@ -45,7 +45,18 @@ export function runMigrations(): void {
       )
     `);
 
-    // 3. Masukkan default API key jika tabel api_keys kosong untuk memudahkan transisi
+    // 3. Tabel activity_logs: Menyimpan log audit keamanan sistem
+    db.run(`
+      CREATE TABLE IF NOT EXISTS activity_logs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        api_key_name TEXT NOT NULL,
+        action TEXT NOT NULL,
+        details TEXT NOT NULL,
+        timestamp INTEGER NOT NULL
+      )
+    `);
+
+    // 4. Masukkan default API key jika tabel api_keys kosong untuk memudahkan transisi
     const countResult = db.query('SELECT COUNT(*) as count FROM api_keys').get() as { count: number };
     if (countResult && countResult.count === 0) {
       // Masukkan API Key default dari env variable atau generator
@@ -61,5 +72,23 @@ export function runMigrations(): void {
   } catch (error) {
     console.error('[DATABASE] Gagal menjalankan migrasi database:', error);
     process.exit(1);
+  }
+}
+
+/**
+ * Helper untuk menyisipkan log audit ke dalam tabel activity_logs
+ * 
+ * @param apiKeyName Nama/deskripsi dari API key yang digunakan
+ * @param action Nama aksi (misal: UPLOAD_SINGLE, DELETE_FILE)
+ * @param details Keterangan tambahan aksi (seperti nama berkas, ukuran, dll.)
+ */
+export function logActivity(apiKeyName: string, action: string, details: string): void {
+  try {
+    db.run(
+      'INSERT INTO activity_logs (api_key_name, action, details, timestamp) VALUES (?, ?, ?, ?)',
+      [apiKeyName, action, details, Date.now()]
+    );
+  } catch (error) {
+    console.error('[DATABASE ERROR] Gagal mencatat log aktivitas:', error);
   }
 }
