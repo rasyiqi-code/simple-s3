@@ -4,9 +4,11 @@
   "description": "Internal Storage API Service menggunakan Express, Multer, dan Sharp",
   "main": "dist/src/index.js",
   "type": "module",
+  "packageManager": "bun@1.2.16",
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
+    "prestart": "tsc",
     "start": "node dist/src/index.js",
     "test": "NODE_ENV=test vitest run"
   },
