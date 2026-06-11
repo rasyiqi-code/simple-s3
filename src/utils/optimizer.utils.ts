@@ -36,11 +36,24 @@ export async function optimizeImageToWebP(
   const webpFileName = `${baseName}.webp`;
   const outputPath = path.join(outputDirectory, webpFileName);
 
-  // Jalankan pipeline Sharp untuk konversi ke webp dengan kualitas optimal (default: 80)
-  // sharp.rotate() dipanggil untuk memastikan orientasi gambar otomatis diperbaiki berdasarkan metadata EXIF
+  // Jalankan pipeline Sharp untuk optimasi:
+  // 1. rotate() -> Otomatis memperbaiki rotasi berdasarkan sensor EXIF kamera
+  // 2. resize() -> Turunkan resolusi secara otomatis ke lebar maksimal 1920px (tanpa memperbesar gambar kecil)
+  // 3. stripMetadata (default Sharp membuang metadata) -> Membuang profil warna EXIF kamera yang tidak perlu untuk hemat ruang
+  // 4. webp() -> Kompresi WebP kualitas 75 (optimal) dengan tingkat usaha (effort) 6 (kompresi paling padat)
   await sharp(inputPath)
     .rotate()
-    .webp({ quality: 80, effort: 4 })
+    .resize({
+      width: 1920,
+      height: 1920,
+      fit: 'inside',           // Jaga rasio aspek gambar tetap proporsional
+      withoutEnlargement: true // Jangan memperbesar gambar jika resolusi aslinya lebih kecil dari 1920px
+    })
+    .webp({ 
+      quality: 75,             // Standar emas industri: kualitas tajam namun ukuran file drop signifikan
+      effort: 6,               // Usaha CPU maksimal untuk menghasilkan ukuran paling ringkas
+      lossless: false          // Gunakan kompresi lossy agar file jauh lebih kecil
+    })
     .toFile(outputPath);
 
   // Ambil informasi ukuran file baru
