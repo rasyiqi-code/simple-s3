@@ -1,6 +1,7 @@
 import { DatabaseSync } from 'node:sqlite';
 import fs from 'fs';
 import path from 'path';
+import { config } from './index.js';
 
 // Buat direktori data jika belum ada di root proyek
 const dataDir = path.join(process.cwd(), 'data');
@@ -108,16 +109,33 @@ export function runMigrations(): void {
       // Kolom sudah ada, lewati
     }
 
-    // 6. Masukkan default API key jika tabel api_keys kosong untuk memudahkan transisi
+    // 6. Masukkan default bucket 'default' jika tabel buckets kosong
+    const countBuckets = db.query('SELECT COUNT(*) as count FROM buckets').get() as { count: number };
+    if (countBuckets && countBuckets.count === 0) {
+      const createdAt = Date.now();
+      db.run(
+        "INSERT INTO buckets (name, description, created_at) VALUES ('default', 'Default storage bucket', ?)",
+        [createdAt]
+      );
+      console.log("[DATABASE] Bucket 'default' berhasil ditambahkan.");
+
+      // Buat folder fisik untuk bucket default di dalam folder uploads
+      const defaultDir = path.join(config.getAbsoluteUploadDir(), 'default');
+      if (!fs.existsSync(defaultDir)) {
+        fs.mkdirSync(defaultDir, { recursive: true });
+      }
+    }
+
+    // 7. Masukkan default API key jika tabel api_keys kosong untuk memudahkan transisi
     const countResult = db.query('SELECT COUNT(*) as count FROM api_keys').get() as { count: number };
     if (countResult && countResult.count === 0) {
       // Masukkan API Key default dari env variable atau generator
       const defaultKey = process.env.API_KEY || 'local-dev-api-key';
       db.run(
-        'INSERT INTO api_keys (key_value, name, status, created_at) VALUES (?, ?, ?, ?)',
+        "INSERT INTO api_keys (key_value, name, status, bucket_name, created_at) VALUES (?, ?, ?, 'default', ?)",
         [defaultKey, 'Default System Key (Dari Env)', 'active', Date.now()]
       );
-      console.log('[DATABASE] API Key default berhasil ditambahkan ke database.');
+      console.log('[DATABASE] API Key default berhasil ditambahkan ke database (terikat ke bucket default).');
     }
 
     console.log('[DATABASE] Migrasi tabel berhasil diperiksa/dijalankan.');

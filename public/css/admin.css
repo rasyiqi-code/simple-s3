@@ -640,6 +640,139 @@ tbody tr:hover {
   }
 }
 
+/* Styling Select */
+.input-wrapper select {
+  width: 100%;
+  padding: 12px 14px 12px 42px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--border-glass);
+  border-radius: 8px;
+  color: var(--text-main);
+  font-family: 'Inter', sans-serif;
+  font-size: 0.95rem;
+  transition: var(--transition-smooth);
+  cursor: pointer;
+  outline: none;
+  appearance: none;
+}
+.input-wrapper select:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--border-focus);
+}
+.input-wrapper select option {
+  background-color: var(--bg-secondary);
+  color: var(--text-main);
+}
+.input-wrapper::after {
+  content: '\f078';
+  font-family: 'Font Awesome 6 Free';
+  font-weight: 900;
+  position: absolute;
+  right: 14px;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+.input-wrapper input ~ i, .input-wrapper select ~ i {
+  pointer-events: none;
+}
+
+/* Buckets Grid & Card */
+.buckets-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+  margin-top: 16px;
+}
+
+.bucket-loading, .bucket-empty {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 48px;
+  color: var(--text-muted);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.01);
+  border: 1px dashed var(--border-glass);
+}
+.bucket-empty i, .bucket-loading i {
+  font-size: 2rem;
+  color: var(--color-primary);
+}
+
+.bucket-card {
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+  border-radius: 16px;
+  transition: var(--transition-smooth);
+  position: relative;
+  overflow: hidden;
+}
+
+.bucket-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 100%;
+  background: linear-gradient(to bottom, var(--color-primary), var(--color-primary-hover));
+  opacity: 0.8;
+}
+
+.bucket-card:hover {
+  transform: translateY(-2px);
+  background: var(--bg-glass-hover);
+  border-color: rgba(99, 102, 241, 0.3);
+}
+
+.bucket-card-icon {
+  font-size: 1.8rem;
+  color: var(--color-primary);
+  margin-bottom: 12px;
+}
+
+.bucket-card-body {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.bucket-card-name {
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.bucket-card-desc {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+  flex-grow: 1;
+}
+
+.bucket-card-meta {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.bucket-card-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+  border-top: 1px solid var(--border-glass);
+  padding-top: 12px;
+}
+
 /* Responsive Media Queries */
 @media (max-width: 768px) {
   .dashboard-layout {

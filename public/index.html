@@ -3,14 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Dashboard Admin - Internal Storage Service</title>
-  <!-- Google Fonts: Outfit & Inter -->
+  <title>Dashboard Admin - Simple S3</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <!-- FontAwesome Icon -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <!-- Custom Styling -->
   <link rel="stylesheet" href="/css/admin.css">
 </head>
 <body>
@@ -48,6 +45,9 @@
       </div>
       
       <nav class="sidebar-nav">
+        <button class="nav-item" data-tab="buckets">
+          <i class="fa-solid fa-database"></i> Buckets
+        </button>
         <button class="nav-item active" data-tab="explorer">
           <i class="fa-solid fa-folder-open"></i> File Explorer
         </button>
@@ -83,6 +83,26 @@
         </div>
       </header>
 
+      <!-- SEKSI TAB: BUCKETS -->
+      <section id="tab-buckets" class="tab-content">
+        <div class="toolbar justify-between">
+          <div class="description-text">
+            <h3>Manajemen Bucket</h3>
+            <p>Bucket adalah wadah penyimpanan terpisah. Setiap API Key harus terikat ke satu bucket.</p>
+          </div>
+          <button id="open-create-bucket-modal" class="btn btn-primary">
+            <i class="fa-solid fa-plus"></i> Buat Bucket Baru
+          </button>
+        </div>
+
+        <div id="buckets-grid" class="buckets-grid">
+          <!-- Diisi via JavaScript -->
+          <div class="bucket-loading">
+            <i class="fa-solid fa-spinner fa-spin"></i> Memuat bucket...
+          </div>
+        </div>
+      </section>
+
       <!-- SEKSI TAB: FILE EXPLORER -->
       <section id="tab-explorer" class="tab-content active-tab">
         <div class="toolbar">
@@ -100,6 +120,7 @@
             <thead>
               <tr>
                 <th>Nama Asli</th>
+                <th>Bucket</th>
                 <th>Nama Penyimpanan</th>
                 <th>Ukuran</th>
                 <th>Tipe</th>
@@ -108,9 +129,8 @@
               </tr>
             </thead>
             <tbody id="files-list">
-              <!-- Baris file diisi lewat javascript -->
               <tr>
-                <td colspan="6" class="text-center loading-state">
+                <td colspan="7" class="text-center loading-state">
                   <i class="fa-solid fa-spinner fa-spin"></i> Memuat berkas...
                 </td>
               </tr>
@@ -124,7 +144,7 @@
         <div class="toolbar justify-between">
           <div class="description-text">
             <h3>Manajemen API Keys</h3>
-            <p>Gunakan API Key dinamis ini untuk mengupload file dari website klien Anda.</p>
+            <p>Setiap API Key terikat ke satu bucket. Buat bucket terlebih dahulu sebelum membuat key.</p>
           </div>
           <button id="open-create-key-modal" class="btn btn-primary">
             <i class="fa-solid fa-plus"></i> Buat API Key Baru
@@ -136,6 +156,7 @@
             <thead>
               <tr>
                 <th>Nama / Deskripsi Key</th>
+                <th>Bucket</th>
                 <th>API Key Token</th>
                 <th>Status</th>
                 <th>Dibuat Pada</th>
@@ -143,9 +164,8 @@
               </tr>
             </thead>
             <tbody id="keys-list">
-              <!-- Baris keys diisi lewat javascript -->
               <tr>
-                <td colspan="5" class="text-center loading-state">
+                <td colspan="6" class="text-center loading-state">
                   <i class="fa-solid fa-spinner fa-spin"></i> Memuat API Key...
                 </td>
               </tr>
@@ -191,12 +211,44 @@
 
   </div>
 
+  <!-- MODAL MEMBUAT BUCKET -->
+  <div id="create-bucket-modal" class="modal-overlay">
+    <div class="modal glass">
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-database"></i> Buat Bucket Baru</h3>
+        <button class="close-modal-btn" data-modal="create-bucket-modal"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <form id="create-bucket-form">
+        <div class="input-group">
+          <label for="bucket-name">Nama Bucket</label>
+          <div class="input-wrapper">
+            <i class="fa-solid fa-database"></i>
+            <input type="text" id="bucket-name" placeholder="Contoh: avatars, documents, assets..." required
+              pattern="[a-z0-9_\-]{1,63}" title="Hanya huruf kecil, angka, tanda hubung, underscore">
+          </div>
+          <span class="help-text">Hanya huruf kecil, angka, <code>-</code> dan <code>_</code>. Maks 63 karakter.</span>
+        </div>
+        <div class="input-group">
+          <label for="bucket-description">Deskripsi <span style="opacity:0.5">(opsional)</span></label>
+          <div class="input-wrapper">
+            <i class="fa-solid fa-pen"></i>
+            <input type="text" id="bucket-description" placeholder="Contoh: Untuk menyimpan foto profil pengguna">
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-secondary close-modal-btn" data-modal="create-bucket-modal">Batal</button>
+          <button type="submit" class="btn btn-primary"><i class="fa-solid fa-plus"></i> Buat Bucket</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- MODAL MEMBUAT API KEY -->
   <div id="create-key-modal" class="modal-overlay">
     <div class="modal glass">
       <div class="modal-header">
-        <h3>Buat API Key Baru</h3>
-        <button class="close-modal-btn"><i class="fa-solid fa-xmark"></i></button>
+        <h3><i class="fa-solid fa-key"></i> Buat API Key Baru</h3>
+        <button class="close-modal-btn" data-modal="create-key-modal"><i class="fa-solid fa-xmark"></i></button>
       </div>
       <form id="create-key-form">
         <div class="input-group">
@@ -207,8 +259,18 @@
           </div>
           <span class="help-text">Berikan nama yang spesifik agar memudahkan pelacakan asal unggahan.</span>
         </div>
+        <div class="input-group">
+          <label for="key-bucket">Bucket Tujuan</label>
+          <div class="input-wrapper">
+            <i class="fa-solid fa-database"></i>
+            <select id="key-bucket" required>
+              <option value="" disabled selected>-- Pilih Bucket --</option>
+            </select>
+          </div>
+          <span class="help-text">API Key ini hanya bisa mengupload ke bucket yang dipilih.</span>
+        </div>
         <div class="modal-actions">
-          <button type="button" class="btn btn-secondary close-modal-btn">Batal</button>
+          <button type="button" class="btn btn-secondary close-modal-btn" data-modal="create-key-modal">Batal</button>
           <button type="submit" class="btn btn-primary">Simpan API Key</button>
         </div>
       </form>
@@ -218,7 +280,6 @@
   <!-- NOTIFIKASI TOAST -->
   <div id="toast" class="toast hidden"></div>
 
-  <!-- Custom Script -->
   <script src="/js/admin.js"></script>
 </body>
 </html>
